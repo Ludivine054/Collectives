@@ -1,21 +1,19 @@
 {
-  "name": "collective",
+  "name": "collectives",
   "version": "1.0.0",
-  "description": "A sample Node.js application",
+  "description": "",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/app.js"
+  },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
   },
   "dependencies": {
     "express": "^4.17.1",
-    "mongoose": "^7.0.0",
-    "passport": "^0.6.0",
+    "mongoose": "^6.0.0",
+    "passport": "^0.5.0",
     "passport-local": "^1.0.0"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "author": "Your Name",
-  "license": "ISC"
+  }
 }
