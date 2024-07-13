@@ -1,97 +1,113 @@
-// src/routes/auth.js
+// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const passport = require('passport');
-const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const { check, validationResult } = require('express-validator');
+require('dotenv').config();
 
-// Register Page
-router.get('/register', (req, res) => res.render('register'));
+// Mock user database
+const users = [];
 
-// Register Handle
-router.post('/register', (req, res) => {
-  const { name, email, password, password2 } = req.body;
-  let errors = [];
+// Register a new user
+router.post(
+  '/register',
+  [
+    check('email', 'Please include a valid email').isEmail(),
+    check('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 })
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  // Check required fields
-  if (!name || !email || !password || !password2) {
-    errors.push({ msg: 'Please fill in all fields' });
-  }
+    const { email, password } = req.body;
 
-  // Check passwords match
-  if (password !== password2) {
-    errors.push({ msg: 'Passwords do not match' });
-  }
+    try {
+      let user = users.find(user => user.email === email);
+      if (user) {
+        return res.status(400).json({ msg: 'User already exists' });
+      }
 
-  // Check password length
-  if (password.length < 6) {
-    errors.push({ msg: 'Password should be at least 6 characters' });
-  }
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
 
-  if (errors.length > 0) {
-    res.render('register', {
-      errors,
-      name,
-      email,
-      password,
-      password2
-    });
-  } else {
-    // Validation passed
-    User.findOne({ email: email })
-      .then(user => {
-        if (user) {
-          // User exists
-          errors.push({ msg: 'Email is already registered' });
-          res.render('register', {
-            errors,
-            name,
-            email,
-            password,
-            password2
-          });
-        } else {
-          const newUser = new User({
-            name,
-            email,
-            password
-          });
+      user = {
+        email,
+        password: hashedPassword
+      };
 
-          // Hash password
-          bcrypt.genSalt(10, (err, salt) => bcrypt.hash(newUser.password, salt, (err, hash) => {
-            if (err) throw err;
-            // Set password to hashed
-            newUser.password = hash;
-            // Save user
-            newUser.save()
-              .then(user => {
-                res.redirect('/login');
-              })
-              .catch(err => console.log(err));
-          }));
+      users.push(user);
+
+      const payload = {
+        user: {
+          email: user.email
         }
-      });
+      };
+
+      jwt.sign(
+        payload,
+        process.env.JWT_SECRET,
+        { expiresIn: 360000 },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server error');
+    }
   }
-});
+);
 
-// Login Page
-router.get('/login', (req, res) => res.render('login'));
+// Login a user
+router.post(
+  '/login',
+  [
+    check('email', 'Please include a valid email').isEmail(),
+    check('password', 'Password is required').exists()
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-// Login Handle
-router.post('/login', (req, res, next) => {
-  passport.authenticate('local', {
-    successRedirect: '/dashboard',
-    failureRedirect: '/login',
-    failureFlash: true
-  })(req, res, next);
-});
+    const { email, password } = req.body;
 
-// Logout Handle
-router.get('/logout', (req, res) => {
-  req.logout((err) => {
-    if (err) return next(err);
-    res.redirect('/login');
-  });
-});
+    try {
+      let user = users.find(user => user.email === email);
+      if (!user) {
+        return res.status(400).json({ msg: 'Invalid Credentials' });
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ msg: 'Invalid Credentials' });
+      }
+
+      const payload = {
+        user: {
+          email: user.email
+        }
+      };
+
+      jwt.sign(
+        payload,
+        process.env.JWT_SECRET,
+        { expiresIn: 360000 },
+        (err, token) => {
+          if (err) throw err;
+          res.json({ token });
+        }
+      );
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server error');
+    }
+  }
+);
 
 module.exports = router;

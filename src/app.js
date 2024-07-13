@@ -1,7 +1,7 @@
 // src/app.js
 const express = require('express');
 const path = require('path');
-const dotenv = require('dotenv');
+const dotenv = require('dotenv').config();
 
 // Load environment variables from .env file
 dotenv.config();
@@ -44,3 +44,17 @@ app.use('/', authRoutes);
 
 const helmet = require('helmet');
 app.use(helmet());
+
+// app.js
+const express = require('express');
+const app = express();
+const authRoutes = require('./routes/auth');
+
+// Initialize Middleware
+app.use(express.json({ extended: false }));
+
+// Define Routes
+app.use('/api/auth', authRoutes);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
