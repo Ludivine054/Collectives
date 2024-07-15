@@ -111,3 +111,11 @@ router.post(
 );
 
 module.exports = router;
+
+const authRoute = require('./routes/auth');
+const express = require('express');
+const router = express.Router();
+
+// Ajouter vos routes ici
+
+module.exports = router;
